@@ -38,6 +38,16 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "sounds": [],
+          "android": {
+            "useNextNotificationApi": true
+          }
+        }
       ]
     ],
     "experiments": {

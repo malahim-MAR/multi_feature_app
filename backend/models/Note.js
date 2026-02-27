@@ -12,6 +12,11 @@ const NoteSchema = new mongoose.Schema({
         required: [true, 'Please provide a description'],
         maxlength: [500, 'Description cannot be more than 500 characters']
     },
+    reminder: {
+        date: String,
+        repeat: String,
+        notificationId: String
+    },
     createdAt: {
         type: Date,
         default: Date.now
