@@ -46,7 +46,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="expenses"
         options={{
-          title: 'Expenses',
+          title: 'Wallet',
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="wallet-outline" size={size} color={color} />
           ),
@@ -64,6 +64,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="humanizer"
         options={{
+          href: null, // Hidden for now
           title: 'Humanizer',
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="sparkles-outline" size={size} color={color} />
@@ -73,6 +74,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="quiz"
         options={{
+          href: null, // Hidden for now
           title: 'Quiz',
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="help-circle-outline" size={size} color={color} />

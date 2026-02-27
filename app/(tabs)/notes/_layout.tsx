@@ -5,6 +5,10 @@ export default function NotesLayout() {
         <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="editor" />
+            <Stack.Screen name="archive" />
+            <Stack.Screen name="trash" />
+            <Stack.Screen name="labels" />
+            <Stack.Screen name="label-notes" />
         </Stack>
     );
 }
