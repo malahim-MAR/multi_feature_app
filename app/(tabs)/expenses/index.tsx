@@ -17,6 +17,8 @@ import {
     getCurrentMonthExpenses,
     getMonthlyTotal,
     getSalary, setSalary as saveSalary,
+    resetExpenseData,
+    getPreviousMonthsExpenses,
 } from '../../../services/expenseStorage';
 
 const categoryIcons: Record<ExpenseCategory, string> = {
@@ -44,6 +46,8 @@ export default function ExpensesDashboard() {
     const [totalSpent, setTotalSpent] = useState(0);
     const [showSalaryModal, setShowSalaryModal] = useState(false);
     const [salaryInput, setSalaryInput] = useState('');
+    const [historyGroups, setHistoryGroups] = useState<Record<string, Expense[]>>({});
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
 
     const loadData = useCallback(async () => {
         const s = await getSalary();
@@ -52,6 +56,8 @@ export default function ExpensesDashboard() {
         setExpenses(exp);
         const total = await getMonthlyTotal();
         setTotalSpent(total);
+        const hGroups = await getPreviousMonthsExpenses();
+        setHistoryGroups(hGroups);
     }, []);
 
     useFocusEffect(
@@ -84,6 +90,19 @@ export default function ExpensesDashboard() {
         ]);
     };
 
+    const handleResetDefaults = () => {
+        Alert.alert('Reset to Default', 'Are you sure you want to delete all your expenses and salary data?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Reset', style: 'destructive',
+                onPress: async () => {
+                    await resetExpenseData();
+                    await loadData();
+                }
+            }
+        ]);
+    };
+
     const getProgressColor = () => {
         if (percentSpent >= 90) return Colors.danger;
         if (percentSpent >= 70) return Colors.warning;
@@ -91,6 +110,9 @@ export default function ExpensesDashboard() {
     };
 
     const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const renewalDate = `1st ${nextMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
 
     const renderExpense = ({ item }: { item: Expense }) => (
         <View style={styles.expenseCard}>
@@ -112,7 +134,12 @@ export default function ExpensesDashboard() {
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.title}>Expenses</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.title}>Expenses</Text>
+                    <TouchableOpacity onPress={handleResetDefaults} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Ionicons name="refresh" size={24} color={Colors.textSecondary} />
+                    </TouchableOpacity>
+                </View>
                 <Text style={styles.monthLabel}>{currentMonth}</Text>
             </View>
 
@@ -129,6 +156,7 @@ export default function ExpensesDashboard() {
                             <View>
                                 <Text style={styles.salaryLabel}>Monthly Salary</Text>
                                 <Text style={styles.salaryAmount}>Rs {salary.toLocaleString()}</Text>
+                                {salary > 0 && <Text style={{...Typography.label, fontSize: 10, color: Colors.textSecondary, marginTop: 4}}>Renews: {renewalDate}</Text>}
                             </View>
                             <Ionicons name="pencil-outline" size={18} color={Colors.primary} />
                         </TouchableOpacity>
@@ -157,13 +185,23 @@ export default function ExpensesDashboard() {
                         {/* Recent Label + Add Button */}
                         <View style={styles.recentHeader}>
                             <Text style={styles.recentTitle}>Recent Expenses</Text>
-                            <TouchableOpacity
-                                style={styles.addButton}
-                                onPress={() => router.push('/expenses/add' as any)}
-                            >
-                                <Ionicons name="add" size={20} color={Colors.white} />
-                                <Text style={styles.addButtonText}>Add</Text>
-                            </TouchableOpacity>
+                            <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                                <TouchableOpacity
+                                    style={[styles.addButton, { backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.border }]} 
+                                    onPress={() => setShowHistoryModal(true)}
+                                >
+                                    <Ionicons name="time-outline" size={18} color={Colors.textPrimary} />
+                                    <Text style={[styles.addButtonText, { color: Colors.textPrimary }]}>History</Text>
+                                </TouchableOpacity>
+                                
+                                <TouchableOpacity
+                                    style={styles.addButton}
+                                    onPress={() => router.push('/expenses/add' as any)}
+                                >
+                                    <Ionicons name="add" size={20} color={Colors.white} />
+                                    <Text style={styles.addButtonText}>Add</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </>
                 }
@@ -197,6 +235,50 @@ export default function ExpensesDashboard() {
                                 <Text style={styles.modalSaveText}>Save</Text>
                             </TouchableOpacity>
                         </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* History Modal */}
+            <Modal visible={showHistoryModal} transparent animationType="slide">
+                <View style={styles.fullModalOverlay}>
+                    <View style={styles.fullModalContent}>
+                        <View style={styles.fullModalHeader}>
+                            <Text style={styles.fullModalTitle}>Expense History</Text>
+                            <TouchableOpacity onPress={() => setShowHistoryModal(false)}>
+                                <Ionicons name="close" size={24} color={Colors.textPrimary} />
+                            </TouchableOpacity>
+                        </View>
+                        <FlatList
+                            data={Object.keys(historyGroups).sort((a,b) => new Date(b).getTime() - new Date(a).getTime())}
+                            keyExtractor={(item) => item}
+                            showsVerticalScrollIndicator={false}
+                            renderItem={({ item: month }) => (
+                                <View style={{ marginBottom: Spacing.xl }}>
+                                    <Text style={styles.historyMonth}>{month}</Text>
+                                    <View style={{ backgroundColor: Colors.white, borderRadius: Radius.md, paddingHorizontal: Spacing.sm, borderWidth: 1, borderColor: Colors.border }}>
+                                    {historyGroups[month].map(exp => (
+                                        <View key={exp.id} style={[styles.expenseCard, { borderWidth: 0, marginBottom: 0, borderBottomWidth: 1, borderBottomColor: Colors.border, borderRadius: 0, paddingHorizontal: 0 }]}>
+                                            <View style={[styles.categoryDot, { backgroundColor: categoryColors[exp.category] }]} />
+                                            <View style={styles.expenseInfo}>
+                                                <Text style={styles.expenseCategory}>{exp.category}</Text>
+                                                <Text style={styles.expenseNote}>
+                                                    {exp.note || new Date(exp.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                </Text>
+                                            </View>
+                                            <Text style={styles.expenseAmount}>-Rs {exp.amount.toLocaleString()}</Text>
+                                        </View>
+                                    ))}
+                                    </View>
+                                </View>
+                            )}
+                            ListEmptyComponent={
+                                <View style={styles.emptyContainer}>
+                                    <Ionicons name="time-outline" size={40} color={Colors.border} />
+                                    <Text style={styles.emptyText}>No previous history found</Text>
+                                </View>
+                            }
+                        />
                     </View>
                 </View>
             </Modal>
@@ -271,4 +353,9 @@ const styles = StyleSheet.create({
         borderRadius: Radius.sm,
     },
     modalSaveText: { ...Typography.button, fontSize: 15 },
+    fullModalOverlay: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
+    fullModalContent: { backgroundColor: Colors.background, borderTopLeftRadius: Radius.lg, borderTopRightRadius: Radius.lg, padding: Spacing.lg, height: '85%' },
+    fullModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
+    fullModalTitle: { ...Typography.headingSmall, fontSize: 20 },
+    historyMonth: { fontFamily: 'Poppins_600SemiBold', fontSize: 16, color: Colors.textPrimary, marginBottom: Spacing.sm },
 });

@@ -98,3 +98,37 @@ export const getCategoryTotals = async (): Promise<Record<ExpenseCategory, numbe
         return { Food: 0, Rent: 0, Transport: 0, Shopping: 0, Bills: 0, Other: 0 };
     }
 };
+
+export const resetExpenseData = async (): Promise<void> => {
+    try {
+        await AsyncStorage.removeItem(SALARY_KEY);
+        await AsyncStorage.removeItem(EXPENSES_KEY);
+    } catch (e) {
+        console.error("AsyncStorage error resetting data", e);
+    }
+};
+
+export const getPreviousMonthsExpenses = async (): Promise<Record<string, Expense[]>> => {
+    try {
+        const all = await getAllExpenses();
+        const now = new Date();
+        const history: Record<string, Expense[]> = {};
+        
+        all.forEach(e => {
+            const d = new Date(e.date);
+            // Skip current month
+            if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+                return;
+            }
+            
+            const monthKey = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            if (!history[monthKey]) history[monthKey] = [];
+            history[monthKey].push(e);
+        });
+        
+        return history;
+    } catch (e) {
+        console.error('Error fetching history:', e);
+        return {};
+    }
+};
